@@ -1,10 +1,10 @@
-package com.perfulandia.cliente_service;
+package com.perfulandia.clientes_service;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class ClienteServiceApplicationTests {
+class ClientesServiceApplicationTests {
 
 	@Test
 	void contextLoads() {
