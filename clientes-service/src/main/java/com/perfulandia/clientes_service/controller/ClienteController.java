@@ -2,6 +2,9 @@ package com.perfulandia.clientes_service.controller;
 
 import com.perfulandia.clientes_service.model.Cliente;
 import com.perfulandia.clientes_service.repository.ClienteRepository;
+
+import jakarta.validation.Valid;
+
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.http.ResponseEntity;
@@ -24,7 +27,7 @@ public class ClienteController {
     }
 
     @PostMapping
-    public ResponseEntity<EntityModel<Cliente>> crearCliente(@RequestBody Cliente cliente) {
+    public ResponseEntity<EntityModel<Cliente>> crearCliente(@Valid @RequestBody Cliente cliente) {
         if (clienteRepository.existsByEmail(cliente.getEmail())) {
             return ResponseEntity.badRequest().build();
         }
