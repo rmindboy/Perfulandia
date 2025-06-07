@@ -62,6 +62,33 @@ public class ClienteController {
                 linkTo(methodOn(ClienteController.class).listarClientes()).withSelfRel());
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<EntityModel<Cliente>> actualizarCliente(@PathVariable Long id, @Valid @RequestBody Cliente clienteActualizado) {
+        return clienteRepository.findById(id)
+                .map(cliente -> {
+                    // Validación del email duplicado
+                    if (!cliente.getEmail().equals(clienteActualizado.getEmail()) &&
+                            clienteRepository.existsByEmail(clienteActualizado.getEmail())) {
+                        throw new IllegalArgumentException("El email ya está registrado");
+                    }
+
+                    cliente.setNombre(clienteActualizado.getNombre());
+                    cliente.setEmail(clienteActualizado.getEmail());
+                    cliente.setPassword(clienteActualizado.getPassword());
+                    cliente.setDireccionesEnvio(clienteActualizado.getDireccionesEnvio());
+                    cliente.setTelefono(clienteActualizado.getTelefono());
+
+                    Cliente actualizado = clienteRepository.save(cliente);
+
+                    return EntityModel.of(actualizado,
+                            linkTo(methodOn(ClienteController.class).obtenerCliente(id)).withSelfRel(),
+                            linkTo(methodOn(ClienteController.class).listarClientes()).withRel("todos-los-clientes"));
+                })
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminarCliente(@PathVariable Long id) {
         clienteRepository.deleteById(id);
