@@ -1,5 +1,6 @@
 package com.perfulandia.clientes_service.controller;
 
+import com.perfulandia.clientes_service.DTO.ActualizarContrasenaRequest;
 import com.perfulandia.clientes_service.model.Cliente;
 import com.perfulandia.clientes_service.repository.ClienteRepository;
 
@@ -87,6 +88,34 @@ public class ClienteController {
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
+
+    @PatchMapping("/{id}/contrasena")
+    public ResponseEntity<EntityModel<Cliente>> actualizarContrasena(
+            @PathVariable Long id,
+            @RequestBody @Valid ActualizarContrasenaRequest request) {
+
+        return clienteRepository.findById(id)
+                .map(cliente -> {
+                    // Verificar que la contraseña actual coincide
+                    if (!cliente.getPassword().equals(request.getContrasenaActual())) {
+                        return null; // Más abajo se maneja como 403
+                    }
+
+                    // Actualizar la contraseña
+                    cliente.setPassword(request.getNuevaContrasena());
+                    Cliente actualizado = clienteRepository.save(cliente);
+
+                    EntityModel<Cliente> resource = EntityModel.of(actualizado,
+                            linkTo(methodOn(ClienteController.class).obtenerCliente(id)).withSelfRel(),
+                            linkTo(methodOn(ClienteController.class).listarClientes()).withRel("todos-los-clientes"));
+
+                    return resource;
+                })
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.status(403).build()); // Contraseña incorrecta o cliente no encontrado
+    }
+
+
 
 
     @DeleteMapping("/{id}")
