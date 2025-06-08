@@ -1,6 +1,7 @@
 package com.perfulandia.ventas_service.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
 import lombok.Data;
 import org.springframework.hateoas.RepresentationModel;
 
@@ -15,12 +16,16 @@ public class Venta extends RepresentationModel<Venta> {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
+    @NotNull(message = "el ID del cliente es obligatorio")
     @Column(nullable = false)
     private Long clienteId;
     
+    @NotNull(message = "el ID de la sucursal es obligatorio")
     @Column(nullable = false)
     private Long sucursalId;
     
+    @NotNull(message = "La fecha de ventas es obligatoria")
+    @PastOrPresent(message = "La fecha de la venta no puede estar en el futuro")
     @Column(nullable = false)
     private LocalDateTime fecha;
     
