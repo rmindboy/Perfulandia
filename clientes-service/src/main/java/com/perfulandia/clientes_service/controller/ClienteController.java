@@ -2,7 +2,7 @@ package com.perfulandia.clientes_service.controller;
 
 import com.perfulandia.clientes_service.DTO.ActualizarContrasenaRequest;
 import com.perfulandia.clientes_service.model.Cliente;
-import com.perfulandia.clientes_service.repository.ClienteRepository;
+import com.perfulandia.clientes_service.service.ClienteService;
 
 import jakarta.validation.Valid;
 
@@ -21,19 +21,15 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 @RequestMapping("/api/v1/clientes")
 public class ClienteController {
 
-    private final ClienteRepository clienteRepository;
+    private final ClienteService clienteService;
 
-    public ClienteController(ClienteRepository clienteRepository) {
-        this.clienteRepository = clienteRepository;
+    public ClienteController(ClienteService clienteService) {
+        this.clienteService = clienteService;
     }
 
     @PostMapping
     public ResponseEntity<EntityModel<Cliente>> crearCliente(@Valid @RequestBody Cliente cliente) {
-        if (clienteRepository.existsByEmail(cliente.getEmail())) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        Cliente nuevoCliente = clienteRepository.save(cliente);
+        Cliente nuevoCliente = clienteService.crearCliente(cliente);
 
         EntityModel<Cliente> resource = EntityModel.of(nuevoCliente);
         resource.add(linkTo(methodOn(ClienteController.class).obtenerCliente(nuevoCliente.getId())).withSelfRel());
@@ -43,18 +39,18 @@ public class ClienteController {
     }
 
     @GetMapping("/{id}")
-    public EntityModel<Cliente> obtenerCliente(@PathVariable Long id) {
-        Cliente cliente = clienteRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
-
-        return EntityModel.of(cliente,
-                linkTo(methodOn(ClienteController.class).obtenerCliente(id)).withSelfRel(),
-                linkTo(methodOn(ClienteController.class).listarClientes()).withRel("todos-los-clientes"));
+    public ResponseEntity<EntityModel<Cliente>> obtenerCliente(@PathVariable Long id) {
+        return clienteService.buscarPorId(id)
+                .map(cliente -> EntityModel.of(cliente,
+                        linkTo(methodOn(ClienteController.class).obtenerCliente(id)).withSelfRel(),
+                        linkTo(methodOn(ClienteController.class).listarClientes()).withRel("todos-los-clientes")))
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping
     public CollectionModel<EntityModel<Cliente>> listarClientes() {
-        List<EntityModel<Cliente>> clientes = clienteRepository.findAll().stream()
+        List<EntityModel<Cliente>> clientes = clienteService.listarTodos().stream()
                 .map(cliente -> EntityModel.of(cliente,
                         linkTo(methodOn(ClienteController.class).obtenerCliente(cliente.getId())).withSelfRel()))
                 .collect(Collectors.toList());
@@ -65,62 +61,37 @@ public class ClienteController {
 
     @PutMapping("/{id}")
     public ResponseEntity<EntityModel<Cliente>> actualizarCliente(@PathVariable Long id, @Valid @RequestBody Cliente clienteActualizado) {
-        return clienteRepository.findById(id)
-                .map(cliente -> {
-                    // Validación del email duplicado
-                    if (!cliente.getEmail().equals(clienteActualizado.getEmail()) &&
-                            clienteRepository.existsByEmail(clienteActualizado.getEmail())) {
-                        throw new IllegalArgumentException("El email ya está registrado");
-                    }
+        Cliente actualizado = clienteService.actualizarCliente(id, clienteActualizado);
 
-                    cliente.setNombre(clienteActualizado.getNombre());
-                    cliente.setEmail(clienteActualizado.getEmail());
-                    cliente.setPassword(clienteActualizado.getPassword());
-                    cliente.setDireccionesEnvio(clienteActualizado.getDireccionesEnvio());
-                    cliente.setTelefono(clienteActualizado.getTelefono());
+        EntityModel<Cliente> resource = EntityModel.of(actualizado,
+                linkTo(methodOn(ClienteController.class).obtenerCliente(id)).withSelfRel(),
+                linkTo(methodOn(ClienteController.class).listarClientes()).withRel("todos-los-clientes"));
 
-                    Cliente actualizado = clienteRepository.save(cliente);
-
-                    return EntityModel.of(actualizado,
-                            linkTo(methodOn(ClienteController.class).obtenerCliente(id)).withSelfRel(),
-                            linkTo(methodOn(ClienteController.class).listarClientes()).withRel("todos-los-clientes"));
-                })
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        return ResponseEntity.ok(resource);
     }
 
     @PatchMapping("/{id}/contrasena")
     public ResponseEntity<EntityModel<Cliente>> actualizarContrasena(
             @PathVariable Long id,
             @RequestBody @Valid ActualizarContrasenaRequest request) {
+        try {
+            Cliente actualizado = clienteService.actualizarContrasena(id, request);
 
-        return clienteRepository.findById(id)
-                .map(cliente -> {
-                    // Verificar que la contraseña actual coincide
-                    if (!cliente.getPassword().equals(request.getContrasenaActual())) {
-                        return null; // Más abajo se maneja como 403
-                    }
+            EntityModel<Cliente> resource = EntityModel.of(actualizado,
+                    linkTo(methodOn(ClienteController.class).obtenerCliente(id)).withSelfRel(),
+                    linkTo(methodOn(ClienteController.class).listarClientes()).withRel("todos-los-clientes"));
 
-                    // Actualizar la contraseña
-                    cliente.setPassword(request.getNuevaContrasena());
-                    Cliente actualizado = clienteRepository.save(cliente);
-
-                    EntityModel<Cliente> resource = EntityModel.of(actualizado,
-                            linkTo(methodOn(ClienteController.class).obtenerCliente(id)).withSelfRel(),
-                            linkTo(methodOn(ClienteController.class).listarClientes()).withRel("todos-los-clientes"));
-
-                    return resource;
-                })
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.status(403).build()); // Contraseña incorrecta o cliente no encontrado
+            return ResponseEntity.ok(resource);
+        } catch (SecurityException e) {
+            return ResponseEntity.status(403).build(); // contraseña incorrecta
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build(); // cliente no encontrado
+        }
     }
-
-
-
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminarCliente(@PathVariable Long id) {
-        clienteRepository.deleteById(id);
+        clienteService.eliminarCliente(id);
         return ResponseEntity.noContent().build();
     }
 }
