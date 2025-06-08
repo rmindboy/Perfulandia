@@ -48,7 +48,7 @@ public class ProductoControlador {
                 linkTo(methodOn(ProductoControlador.class).obtenerProductosPorSucursal(producto.getSucursal())).withRel("productos-sucursal"));
     }
 
-    @GetMapping("/sucursal/{sucursal}")
+    @GetMapping("/porSucursal/{sucursal}")
     public CollectionModel<EntityModel<Producto>> obtenerProductosPorSucursal(@PathVariable String sucursal) {
         List<EntityModel<Producto>> productos = productoServicio.obtenerPorSucursal(sucursal).stream()
                 .map(producto -> EntityModel.of(producto,

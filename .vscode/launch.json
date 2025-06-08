@@ -2,6 +2,13 @@
     "configurations": [
         {
             "type": "java",
+            "name": "InventarioServicesApplication",
+            "request": "launch",
+            "mainClass": "com.perfulandia.inventario_services.InventarioServicesApplication",
+            "projectName": "inventario-services"
+        },
+        {
+            "type": "java",
             "name": "Spring Boot-ClientesServiceApplication<clientes-service>",
             "request": "launch",
             "cwd": "${workspaceFolder}",
