@@ -1,15 +1,20 @@
-package com.perfulandia.logistica_service.repository;
+package com.logistica_service.repository;
 
 import com.perfulandia.logistica_service.model.Envio;
+import com.perfulandia.logistica_service.repository.EnvioRepository;
+
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.*;
+import org.springframework.test.context.ActiveProfiles;
+
 import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 @DataJpaTest
+@ActiveProfiles("test")
 class EnvioRepositoryTest {
 
     @Autowired

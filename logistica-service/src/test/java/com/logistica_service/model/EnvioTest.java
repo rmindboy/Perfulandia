@@ -1,9 +1,12 @@
-package com.perfulandia.logistica_service.model;
+package com.logistica_service.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.*;
 import jakarta.validation.constraints.*;
 import org.junit.jupiter.api.*;
+
+import com.perfulandia.logistica_service.model.Envio;
+
 import java.time.LocalDate;
 import java.util.Set;
 

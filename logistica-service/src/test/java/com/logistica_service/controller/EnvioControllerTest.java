@@ -1,5 +1,6 @@
-package com.perfulandia.logistica_service.controller;
+package com.logistica_service.controller;
 
+import com.perfulandia.logistica_service.controller.EnvioController;
 import com.perfulandia.logistica_service.model.Envio;
 import com.perfulandia.logistica_service.repository.EnvioRepository;
 import org.junit.jupiter.api.*;
