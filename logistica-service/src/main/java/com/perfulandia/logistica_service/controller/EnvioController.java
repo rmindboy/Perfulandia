@@ -2,6 +2,8 @@ package com.perfulandia.logistica_service.controller;
 
 import com.perfulandia.logistica_service.model.Envio;
 import com.perfulandia.logistica_service.repository.EnvioRepository;
+import com.perfulandia.logistica_service.service.EnvioService;
+
 import org.springframework.hateoas.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,82 +16,91 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/v1/envios")
 public class EnvioController {
 
-    private final EnvioRepository envioRepository;
+    private final EnvioService envioService;
 
-    public EnvioController(EnvioRepository envioRepository) {
-        this.envioRepository = envioRepository;
+    public EnvioController(EnvioService envioService) {
+        this.envioService = envioService;
     }
 
     @GetMapping
     public CollectionModel<EntityModel<Envio>> listarTodos() {
-        List<EntityModel<Envio>> envios = envioRepository.findAll().stream()
+        List<EntityModel<Envio>> envios = envioService.listarTodos().stream()
+            .map(envio -> EntityModel.of(envio,
+            
+            linkTo(methodOn(EnvioController.class).obtenerPorId(envio.getId())).withSelfRel(),            
+            linkTo(methodOn(EnvioController.class).listarTodos()).withRel("Todos-los-productos")
+                    ))
+                    .collect(Collectors.toList());
+                
+                return CollectionModel.of(envios,
+                
+            linkTo(methodOn(EnvioController.class).listarTodos()).withSelfRel()
+                    );
+            }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<EntityModel<Envio>> obtenerPorId(@PathVariable Long id) {
+        Envio envio = envioService.obtenerPorId(id);
+        EntityModel<Envio> envioModel = EntityModel.of(envio,
+            linkTo(methodOn(EnvioController.class).obtenerPorId(id)).withSelfRel(),
+            linkTo(methodOn(EnvioController.class).listarTodos()).withRel("todos-los-envios")
+        );
+        return ResponseEntity.ok(envioModel);
+    }
+
+    
+    // Crear un nuevo envío
+    @PostMapping
+    public ResponseEntity<EntityModel<Envio>> crearEnvio(@RequestBody Envio envio) {
+        Envio nuevoEnvio = envioService.crear(envio);
+        EntityModel<Envio> envioModel = EntityModel.of(nuevoEnvio,
+            linkTo(methodOn(EnvioController.class).obtenerPorId(nuevoEnvio.getId())).withSelfRel(),
+            linkTo(methodOn(EnvioController.class).listarTodos()).withRel("todos-los-envios")
+        );
+        return ResponseEntity.created(
+            linkTo(methodOn(EnvioController.class).obtenerPorId(nuevoEnvio.getId())).toUri()
+        ).body(envioModel);
+    }
+
+    // Actualizar un envío existente
+    @PutMapping("/{id}")
+    public ResponseEntity<EntityModel<Envio>> actualizarEnvio(@PathVariable Long id, @RequestBody Envio datosEnvio) {
+        Envio envioActualizado = envioService.actualizar(id, datosEnvio);
+        EntityModel<Envio> envioModel = EntityModel.of(envioActualizado,
+            linkTo(methodOn(EnvioController.class).obtenerPorId(envioActualizado.getId())).withSelfRel(),
+            linkTo(methodOn(EnvioController.class).listarTodos()).withRel("todos-los-envios")
+        );
+        return ResponseEntity.ok(envioModel);
+    }
+
+    // Eliminar un envío
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminarEnvio(@PathVariable Long id) {
+        envioService.eliminar(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    //se agrega este enpoint para dar mas claridad, pero lo correcto sería fusionar este con listar todos
+    @GetMapping("/buscar")
+    public CollectionModel<EntityModel<Envio>> buscarPorEstado(@RequestParam(required = false) String estado) {
+        List<Envio> resultados;
+
+        if (estado != null && !estado.isBlank()) {
+            resultados = envioService.buscarPorEstado(estado);
+        } else {
+            resultados = envioService.listarTodos(); // si no se pasa parámetro, retorna todo
+        }
+
+        List<EntityModel<Envio>> envios = resultados.stream()
             .map(envio -> EntityModel.of(envio,
                 linkTo(methodOn(EnvioController.class).obtenerPorId(envio.getId())).withSelfRel(),
-                linkTo(methodOn(EnvioController.class).actualizar(envio.getId(), null)).withRel("actualizar"),
-                linkTo(methodOn(EnvioController.class).eliminar(envio.getId())).withRel("eliminar")
+                linkTo(methodOn(EnvioController.class).listarTodos()).withRel("todos-los-envios")
             ))
             .collect(Collectors.toList());
 
         return CollectionModel.of(envios,
-            linkTo(methodOn(EnvioController.class).listarTodos()).withSelfRel(),
-            linkTo(methodOn(EnvioController.class).crear(null)).withRel("crear"));
+            linkTo(methodOn(EnvioController.class).listarTodos()).withSelfRel()
+        );
     }
 
-    @GetMapping("/{id}")
-    public EntityModel<Envio> obtenerPorId(@PathVariable Long id) {
-        Envio envio = envioRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Envío no encontrado"));
-
-        return EntityModel.of(envio,
-            linkTo(methodOn(EnvioController.class).obtenerPorId(id)).withSelfRel(),
-            linkTo(methodOn(EnvioController.class).listarTodos()).withRel("todos-envios"),
-            linkTo(methodOn(EnvioController.class).buscarPorEstado(envio.getEstado())).withRel("envios-por-estado"));
-    }
-
-    @PostMapping
-    public ResponseEntity<EntityModel<Envio>> crear(@RequestBody Envio envio) {
-        Envio envioGuardado = envioRepository.save(envio);
-        EntityModel<Envio> resource = EntityModel.of(envioGuardado,
-            linkTo(methodOn(EnvioController.class).obtenerPorId(envioGuardado.getId())).withSelfRel());
-
-        return ResponseEntity
-            .created(resource.getRequiredLink(IanaLinkRelations.SELF).toUri())
-            .body(resource);
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<EntityModel<Envio>> actualizar(@PathVariable Long id, @RequestBody Envio envio) {
-        Envio envioActualizado = envioRepository.findById(id)
-            .map(e -> {
-                e.setOrigen(envio.getOrigen());
-                e.setDestino(envio.getDestino());
-                e.setEstado(envio.getEstado());
-                return envioRepository.save(e);
-            })
-            .orElseThrow(() -> new RuntimeException("Envío no encontrado"));
-
-        EntityModel<Envio> resource = EntityModel.of(envioActualizado,
-            linkTo(methodOn(EnvioController.class).obtenerPorId(id)).withSelfRel());
-
-        return ResponseEntity.ok(resource);
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> eliminar(@PathVariable Long id) {
-        envioRepository.deleteById(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    @GetMapping("/estado")
-    public CollectionModel<EntityModel<Envio>> buscarPorEstado(@RequestParam String estado) {
-        List<EntityModel<Envio>> envios = envioRepository.findByEstado(estado).stream()
-            .map(envio -> EntityModel.of(envio,
-                linkTo(methodOn(EnvioController.class).obtenerPorId(envio.getId())).withSelfRel())
-            )
-            .collect(Collectors.toList());
-
-        return CollectionModel.of(envios,
-            linkTo(methodOn(EnvioController.class).buscarPorEstado(estado)).withSelfRel(),
-            linkTo(methodOn(EnvioController.class).listarTodos()).withRel("todos-envios"));
-    }
 }
