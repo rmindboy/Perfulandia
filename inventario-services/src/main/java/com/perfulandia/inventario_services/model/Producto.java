@@ -24,6 +24,8 @@ public class Producto extends RepresentationModel<Producto> {
     @Column(nullable = false)
     private String nombre;
 
+    @NotBlank(message = "El nombre es obligatorio")
+    @Column(nullable = false)
     private String descripcion;
 
     @NotNull(message = "El precio no puede ser nulo")
